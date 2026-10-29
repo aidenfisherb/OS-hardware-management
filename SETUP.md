@@ -47,9 +47,12 @@ The first run downloads packages from NuGet, so it needs internet access.
 
 | Key | Action |
 | --- | --- |
-| Q / Esc / close the window / Ctrl+C in terminal | Quit and release the camera |
+| C | Capture a still (original + grayscale); stays frozen until the next C |
+| Q / Esc / close Live Original / Ctrl+C | Quit and release the camera |
 
-*Capture, filter, and game controls will be added by the other modules.*
+Four windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Captured Grayscale** (captured pair appears after the first C). Details: [docs/ethan-image-views.md](docs/ethan-image-views.md).
+
+*Game controls (R / P / face steering) will be added by Team 1.*
 
 ## Camera permissions
 

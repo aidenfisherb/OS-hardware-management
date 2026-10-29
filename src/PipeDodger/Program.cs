@@ -5,7 +5,7 @@ namespace PipeDodger;
 
 public static class Program
 {
-    private const string WindowName = "Pipe Dodger";
+    private const string LiveWindow = "Live Original";
     private const int EscKey = 27;
 
     public static int Main(string[] args)
@@ -37,9 +37,9 @@ public static class Program
             using var camera = new CameraSource(options);
             camera.Open();
             Console.WriteLine($"Camera {options.DeviceIndex} opened via {camera.BackendName} at {camera.Width}x{camera.Height}.");
-            Console.WriteLine("Press Q or Esc in the window to quit.");
+            Console.WriteLine("C = capture still | Q / Esc = quit");
 
-            Cv2.NamedWindow(WindowName, WindowFlags.AutoSize);
+            Cv2.NamedWindow(LiveWindow, WindowFlags.AutoSize);
             RunLoop(camera, () => stopRequested);
 
             Console.WriteLine($"Stopped after {camera.FramesRead} frames. Camera released.");
@@ -61,27 +61,58 @@ public static class Program
 
     private static void RunLoop(CameraSource camera, Func<bool> stopRequested)
     {
-        while (!stopRequested())
-        {
-            if (camera.TryReadFrame(out Mat frame))
-            {
-                // Temporary display. Ethan's comparison views and Jake's game drawing replace this.
-                Cv2.ImShow(WindowName, frame);
-            }
-            else if (camera.IsLost)
-            {
-                throw camera.LostException();
-            }
+        using var liveGray = new Mat();
+        using var capturedGray = new Mat();
+        Mat? captured = null;
 
-            // WaitKey also pumps window events; without it the window freezes.
-            int key = Cv2.WaitKey(1);
-            if (key == 'q' || key == 'Q' || key == EscKey || WindowClosed())
-                return;
+        try
+        {
+            while (!stopRequested())
+            {
+                if (camera.TryReadFrame(out Mat frame))
+                {
+                    Cv2.CvtColor(frame, liveGray, ColorConversionCodes.BGR2GRAY);
+                    Cv2.ImShow(LiveWindow, frame);
+                    Cv2.ImShow("Live Grayscale", liveGray);
+
+                    if (captured is not null)
+                    {
+                        Cv2.ImShow("Captured Original", captured);
+                        Cv2.ImShow("Captured Grayscale", capturedGray);
+                    }
+
+                    int key = Cv2.WaitKey(1);
+                    if (key is 'c' or 'C')
+                    {
+                        // Clone: CameraSource reuses its Mat; a reference would keep updating with live video.
+                        captured?.Dispose();
+                        captured = frame.Clone();
+                        Cv2.CvtColor(captured, capturedGray, ColorConversionCodes.BGR2GRAY);
+                    }
+                    else if (QuitRequested(key))
+                    {
+                        return;
+                    }
+                }
+                else if (camera.IsLost)
+                {
+                    throw camera.LostException();
+                }
+                else if (QuitRequested(Cv2.WaitKey(1)))
+                {
+                    return;
+                }
+            }
+        }
+        finally
+        {
+            captured?.Dispose();
         }
     }
 
-    private static bool WindowClosed() =>
-        Cv2.GetWindowProperty(WindowName, WindowPropertyFlags.Visible) < 1;
+    private static bool QuitRequested(int key) =>
+        key is 'q' or 'Q' or EscKey
+        || Cv2.GetWindowProperty(LiveWindow, WindowPropertyFlags.Visible) < 1;
 
     // ---------- Device selection ----------
 
