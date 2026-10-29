@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OpenCvVersion>5.0.0.20261018</OpenCvVersion>
+    <HostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)</HostArch>
+  </PropertyGroup>
+
+  <!-- Managed wrapper: the C# API (VideoCapture, Mat, Cv2) shared by every platform. -->
+  <ItemGroup>
+    <PackageReference Include="OpenCvSharp5" Version="$(OpenCvVersion)" />
+  </ItemGroup>
+
+  <!-- Native OpenCV runtime: picked for the machine doing the build. Full runtimes include camera I/O and HighGUI windows. -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(HostArch)' == 'X64'">
+    <PackageReference Include="OpenCvSharp5.runtime.win" Version="$(OpenCvVersion)" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(HostArch)' == 'Arm64'">
+    <PackageReference Include="OpenCvSharp5.runtime.win-arm64" Version="$(OpenCvVersion)" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(HostArch)' == 'X64'">
+    <PackageReference Include="OpenCvSharp5.runtime.osx.x64" Version="$(OpenCvVersion)" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(HostArch)' == 'Arm64'">
+    <PackageReference Include="OpenCvSharp5.runtime.osx.arm64" Version="$(OpenCvVersion)" />
+  </ItemGroup>
+
+</Project>
