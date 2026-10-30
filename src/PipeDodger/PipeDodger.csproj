@@ -14,6 +14,11 @@
     <PackageReference Include="OpenCvSharp5" Version="$(OpenCvVersion)" />
   </ItemGroup>
 
+  <!-- Game images: copied next to the built program so they load from any working directory. -->
+  <ItemGroup>
+    <None Include="assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- Native OpenCV runtime: picked for the machine doing the build. Full runtimes include camera I/O and HighGUI windows. -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(HostArch)' == 'X64'">
     <PackageReference Include="OpenCvSharp5.runtime.win" Version="$(OpenCvVersion)" />

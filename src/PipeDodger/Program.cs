@@ -1,5 +1,7 @@
-﻿using OpenCvSharp;
+﻿using System.Diagnostics;
+using OpenCvSharp;
 using PipeDodger.Camera;
+using PipeDodger.Game;
 
 namespace PipeDodger;
 
@@ -51,6 +53,11 @@ public static class Program
             Console.Error.WriteLine(ex.Hint);
             return 1;
         }
+        catch (FileNotFoundException ex)
+        {
+            Console.Error.WriteLine($"{ex.Message} Expected at: {ex.FileName}");
+            return 3;
+        }
         finally
         {
             Cv2.DestroyAllWindows();
@@ -63,6 +70,8 @@ public static class Program
     {
         using var liveGray = new Mat();
         using var capturedGray = new Mat();
+        using var scene = new GameScene();
+        var clock = Stopwatch.StartNew();
         Mat? captured = null;
 
         try
@@ -74,6 +83,11 @@ public static class Program
                     Cv2.CvtColor(frame, liveGray, ColorConversionCodes.BGR2GRAY);
                     Cv2.ImShow(LiveWindow, frame);
                     Cv2.ImShow("Live Grayscale", liveGray);
+
+                    // real elapsed time keeps the scroll speed the same at any camera frame rate
+                    scene.Update(clock.Elapsed.TotalSeconds);
+                    clock.Restart();
+                    Cv2.ImShow("Game", scene.Render());
 
                     if (captured is not null)
                     {

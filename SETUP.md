@@ -50,7 +50,7 @@ The first run downloads packages from NuGet, so it needs internet access.
 | C | Capture a still (original + grayscale); stays frozen until the next C |
 | Q / Esc / close Live Original / Ctrl+C | Quit and release the camera |
 
-Four windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Captured Grayscale** (captured pair appears after the first C). Details: [docs/ethan-image-views.md](docs/ethan-image-views.md).
+Five windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Captured Grayscale** (captured pair appears after the first C), and **Game** (scrolling art only so far). Details: [docs/ethan-image-views.md](docs/ethan-image-views.md).
 
 *Game controls (R / P / face steering) will be added by Team 1.*
 
@@ -67,6 +67,7 @@ Four windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Ca
 | 0 | Normal exit; camera released |
 | 1 | Camera could not be opened or stopped delivering frames |
 | 2 | Bad command-line option |
+| 3 | A game image in `assets/` could not be loaded |
 
 ## Troubleshooting
 
