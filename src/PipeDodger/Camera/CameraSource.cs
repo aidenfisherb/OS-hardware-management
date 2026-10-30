@@ -29,6 +29,7 @@ public sealed class CameraSource : IDisposable
 
     public void Open()
     {
+        //opens camera
         bool opened = _capture.Open(_options.DeviceIndex, _options.Backend);
         if (!opened || !_capture.IsOpened())
         {
@@ -37,11 +38,12 @@ public sealed class CameraSource : IDisposable
                 OpenFailureHint());
         }
 
-        // Requests only: the driver may pick the nearest size it supports, so read back what we got.
+        // the driver may pick the nearest size it supports
         _capture.Set(VideoCaptureProperties.FrameWidth, _options.RequestedWidth);
         _capture.Set(VideoCaptureProperties.FrameHeight, _options.RequestedHeight);
 
         BackendName = _capture.GetBackendName();
+        // read back the actual size the driver chose
         Width = (int)_capture.Get(VideoCaptureProperties.FrameWidth);
         Height = (int)_capture.Get(VideoCaptureProperties.FrameHeight);
     }
@@ -60,6 +62,7 @@ public sealed class CameraSource : IDisposable
         bool simulatedFailure = _options.SimulateReadFailureAfter > 0
                                 && FramesRead >= _options.SimulateReadFailureAfter;
 
+        // waits for the camera and writes the next frame into the buffer
         if (simulatedFailure || !_capture.Read(_frame) || _frame.Empty())
         {
             _consecutiveFailures++;
@@ -82,9 +85,11 @@ public sealed class CameraSource : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        // Release() closes the device so the OS can hand it to other apps (or to us on the next launch).
+        //disconnect the camera
         _capture.Release();
+        // free the C++ VideoCapture object
         _capture.Dispose();
+        // free the .9 MB of pixel memory
         _frame.Dispose();
     }
 

@@ -2,11 +2,13 @@ using OpenCvSharp;
 
 namespace PipeDodger.Camera;
 
-/// <summary>Which camera to open and how. Filled from command-line flags.</summary>
+// figure out what camera to open and how
 public sealed record CameraOptions
 {
     public int DeviceIndex { get; init; } = 0;
     public VideoCaptureAPIs Backend { get; init; } = DefaultBackend();
+
+    // 640x480 works on nearly every webcam, can change this default easily
     public int RequestedWidth { get; init; } = 640;
     public int RequestedHeight { get; init; } = 480;
     public bool ListCameras { get; init; }
@@ -14,12 +16,14 @@ public sealed record CameraOptions
     /// <summary>Test hook: pretend frame reads fail after this many frames (0 = off).</summary>
     public int SimulateReadFailureAfter { get; init; }
 
-    // Name each OS's native media API explicitly so we know (and can report) which one is in use.
+    // name each OS's native media API explicitly so we can decide which one to use
     public static VideoCaptureAPIs DefaultBackend() =>
         OperatingSystem.IsWindows() ? VideoCaptureAPIs.MSMF :
         OperatingSystem.IsMacOS() ? VideoCaptureAPIs.AVFOUNDATION :
         VideoCaptureAPIs.ANY;
 
+
+    // troubleshooting method for parsing command-line arguments into CameraOptions
     public static CameraOptions Parse(string[] args)
     {
         var options = new CameraOptions();
