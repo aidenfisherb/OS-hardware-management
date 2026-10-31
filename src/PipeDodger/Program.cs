@@ -41,7 +41,7 @@ public static class Program
             //open webcam
             camera.Open();
             Console.WriteLine($"Camera {options.DeviceIndex} opened via {camera.BackendName} at {camera.Width}x{camera.Height}.");
-            Console.WriteLine("Blink or Space = flap | R = restart | P = pause | C = capture still | Q / Esc = quit");
+            Console.WriteLine("Space = start | Blink or Space = flap | R = restart | P = pause | C = capture still | Q / Esc = quit");
 
             Cv2.NamedWindow(LiveWindow, WindowFlags.AutoSize);
             //hand the camera to the frame loop
@@ -102,7 +102,8 @@ public static class Program
                     bool faceLost = scene.State == GameState.Playing && !blink.HasFace;
                     bool paused = userPaused || faceLost;
 
-                    if (blinked && !paused)
+                    // only Space starts the game, so a stray blink can't start it early
+                    if (blinked && !paused && scene.State == GameState.Playing)
                         scene.Flap();
                     if (!paused)
                         scene.Update(deltaSeconds);
@@ -125,7 +126,7 @@ public static class Program
                     }
                     else if (key == ' ')
                     {
-                        // keyboard backup for testing, or if blink detection struggles in a room's lighting
+                        // starts the game; also a keyboard backup for flapping if blink detection struggles in a room's lighting
                         if (!paused)
                             scene.Flap();
                     }
@@ -166,7 +167,7 @@ public static class Program
         if (faceLost) return "Face lost - look at the camera";
         return scene.State switch
         {
-            GameState.Ready => "Blink to start",
+            GameState.Ready => "Press Space to start",
             GameState.GameOver => "Game over - press R",
             _ => null,
         };

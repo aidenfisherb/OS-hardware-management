@@ -47,7 +47,8 @@ The first run downloads packages from NuGet, so it needs internet access.
 
 | Key | Action |
 | --- | --- |
-| Blink / Space | Flap (the first flap starts the game) |
+| Space | Start the game; also flaps |
+| Blink | Flap (once the game has started) |
 | R | Restart the game |
 | P | Pause / resume the game |
 | C | Capture a still (original + grayscale); stays frozen until the next C |

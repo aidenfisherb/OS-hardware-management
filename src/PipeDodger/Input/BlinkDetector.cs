@@ -24,8 +24,8 @@ public sealed class BlinkDetector : IDisposable
     // Eyes must be seen this many frames in a row before a blink can count, which ignores detector flicker.
     private const int OpenFramesToArm = 2;
 
-    // A real blink lasts about 3-12 frames at 30 fps. Raise this if the bird flaps by itself.
-    private const int ClosedFramesToBlink = 2;
+    // A real blink lasts about 3-12 frames at 30 fps. Raise this if the bird flaps by itself; lower it if blinks get missed.
+    private const int ClosedFramesToBlink = 4;
 
     private readonly CascadeClassifier _faceCascade;
     private readonly CascadeClassifier _eyeCascade;
