@@ -47,12 +47,25 @@ The first run downloads packages from NuGet, so it needs internet access.
 
 | Key | Action |
 | --- | --- |
+| Blink / Space | Flap (the first flap starts the game) |
+| R | Restart the game |
+| P | Pause / resume the game |
 | C | Capture a still (original + grayscale); stays frozen until the next C |
 | Q / Esc / close Live Original / Ctrl+C | Quit and release the camera |
 
-Five windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Captured Grayscale** (captured pair appears after the first C), and **Game** (scrolling art only so far). Details: [docs/ethan-image-views.md](docs/ethan-image-views.md).
+An OpenCV window must have keyboard focus for keys to work. The game also pauses by itself if your face is lost for more than half a second.
 
-*Game controls (R / P / face steering) will be added by Team 1.*
+Five windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Captured Grayscale** (captured pair appears after the first C), and **Game**. Details: [docs/ethan-image-views.md](docs/ethan-image-views.md).
+
+### Blink detection tips
+
+The bottom of the Game window shows what the detector sees. With your eyes open it should say `eyes open: 1` or `2`, and it should drop to `0` when you blink.
+
+- Face the camera with light on your face, not behind you.
+- Blink firmly. A very fast blink can fall between camera frames.
+- If the bird flaps by itself, raise `ClosedFramesToBlink` in `Input/BlinkDetector.cs`. Space always works as a backup.
+
+Detector files in `assets/` come from [OpenCV](https://github.com/opencv/opencv/tree/4.x/data/haarcascades); their license text is kept at the top of each file.
 
 ## Camera permissions
 
@@ -67,7 +80,7 @@ Five windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Ca
 | 0 | Normal exit; camera released |
 | 1 | Camera could not be opened or stopped delivering frames |
 | 2 | Bad command-line option |
-| 3 | A game image in `assets/` could not be loaded |
+| 3 | A file in `assets/` (game image or detector) could not be loaded |
 
 ## Troubleshooting
 

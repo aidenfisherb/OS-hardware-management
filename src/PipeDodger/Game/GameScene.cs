@@ -2,9 +2,11 @@ using OpenCvSharp;
 
 namespace PipeDodger.Game;
 
+public enum GameState { Ready, Playing, GameOver }
+
 /// <summary>
-/// The game's art: a background and scrolling pipes drawn with OpenCV shapes, plus the character image.
-/// Collision, scoring, and character movement are not here yet; set CharacterY to move the character.
+/// The game: bird physics, scrolling pipes, collision, and score, all drawn with OpenCV.
+/// Knows nothing about the camera; call Flap() when the player's input fires.
 /// </summary>
 public sealed class GameScene : IDisposable
 {
@@ -12,15 +14,28 @@ public sealed class GameScene : IDisposable
     public const int Height = 480;
     public const int GroundY = 420;
     public const int CharacterX = 150;
-    public const int CharacterRadius = 18;
+
+    // A little smaller than the image, so a near miss doesn't feel like an unfair hit.
+    public const int CharacterRadius = 16;
+
+    // Much gentler than the original game: holding height takes one blink about every 1.15 seconds.
+    private const double GravityPixelsPerSecond2 = 450;
+    private const double FlapSpeedPixelsPerSecond = 260;
+    private const double MaxFallSpeedPixelsPerSecond = 380;
+
+    // Limits one physics step, so a camera stall can't drop the bird through a pipe.
+    private const double MaxStepSeconds = 0.1;
 
     private const int PipeWidth = 70;
     private const int PipeCapOverhang = 6;
     private const int PipeCapHeight = 24;
-    private const int PipeGapHeight = 150;
-    private const int PipeSpacing = 230;
+    private const int PipeGapHeight = 180;
+    private const int PipeGapMargin = 40;
+    private const int MaxGapChange = 90;
+    private const int PipeSpacing = 260;
     private const int PipeCount = 4;
-    private const int ScrollPixelsPerSecond = 120;
+    private const int FirstPipeX = 500;
+    private const int ScrollPixelsPerSecond = 90;
     private const int GroundStripeWidth = 32;
     private const int SpriteHeight = 36;
     private const int BackgroundTolerance = 40;
@@ -47,6 +62,7 @@ public sealed class GameScene : IDisposable
         public double X;
         public int GapCenterY;
         public PipeColors Colors;
+        public bool Scored;
     }
 
     private readonly Random _random = new();
@@ -56,47 +72,162 @@ public sealed class GameScene : IDisposable
     private readonly Mat _spriteMask;
     private readonly Mat _canvas = new();
     private double _scrollOffset;
+    private double _velocityY;
+    private double _readySeconds;
 
     public GameScene()
     {
         (_sprite, _spriteMask) = LoadCharacterSprite();
         _background = BuildBackground();
+        Restart();
+    }
+
+    public GameState State { get; private set; }
+    public int Score { get; private set; }
+    public double CharacterY { get; private set; }
+
+    // ---------- Player actions ----------
+
+    /// <summary>Back to the start screen with a new set of pipes.</summary>
+    public void Restart()
+    {
+        State = GameState.Ready;
+        Score = 0;
+        CharacterY = GroundY / 2.0;
+        _velocityY = 0;
+        _readySeconds = 0;
+
+        _pipes.Clear();
+        int gapCenter = GroundY / 2;
         for (int i = 0; i < PipeCount; i++)
         {
+            gapCenter = RandomGapCenter(gapCenter);
             _pipes.Add(new Pipe
             {
-                X = 400 + i * PipeSpacing,
-                GapCenterY = RandomGapCenter(),
+                X = FirstPipeX + i * PipeSpacing,
+                GapCenterY = gapCenter,
                 Colors = i % 2 == 0 ? RedPipe : BluePipe,
             });
         }
     }
 
-    public double CharacterY { get; set; } = GroundY / 2.0;
+    /// <summary>Sets the bird's speed straight upward, whatever it was, as in the original game. The first flap starts the game.</summary>
+    public void Flap()
+    {
+        if (State == GameState.GameOver)
+            return;
+
+        State = GameState.Playing;
+        _velocityY = -FlapSpeedPixelsPerSecond;
+    }
 
     // ---------- Update ----------
 
-    /// <summary>Scrolls the pipes and ground. A pipe that leaves on the left returns on the right with a new gap.</summary>
     public void Update(double deltaSeconds)
     {
-        double distance = ScrollPixelsPerSecond * deltaSeconds;
-        _scrollOffset += distance;
+        double step = Math.Min(deltaSeconds, MaxStepSeconds);
 
-        foreach (var pipe in _pipes)
+        switch (State)
         {
+            case GameState.Ready:
+                // hover on the start screen so the game looks alive before the first flap
+                _scrollOffset += ScrollPixelsPerSecond * step;
+                _readySeconds += step;
+                CharacterY = GroundY / 2.0 + Math.Sin(_readySeconds * 4) * 8;
+                break;
+
+            case GameState.Playing:
+                _scrollOffset += ScrollPixelsPerSecond * step;
+                MoveCharacter(step);
+                MovePipes(ScrollPixelsPerSecond * step);
+                UpdateScore();
+                if (CharacterHitSomething())
+                    State = GameState.GameOver;
+                break;
+        }
+    }
+
+    private void MoveCharacter(double step)
+    {
+        // gravity changes the speed, then the speed changes the position
+        _velocityY = Math.Min(_velocityY + GravityPixelsPerSecond2 * step, MaxFallSpeedPixelsPerSecond);
+        CharacterY += _velocityY * step;
+
+        // the sky is a ceiling, so the bird can't fly over the pipes
+        if (CharacterY < CharacterRadius)
+        {
+            CharacterY = CharacterRadius;
+            _velocityY = 0;
+        }
+    }
+
+    /// <summary>A pipe that leaves on the left returns on the right with a new gap.</summary>
+    private void MovePipes(double distance)
+    {
+        for (int i = 0; i < _pipes.Count; i++)
+        {
+            Pipe pipe = _pipes[i];
             pipe.X -= distance;
             if (pipe.X + PipeWidth + PipeCapOverhang < 0)
             {
                 pipe.X += PipeCount * PipeSpacing;
-                pipe.GapCenterY = RandomGapCenter();
+                pipe.Scored = false;
+
+                // the pipe ahead of it in the row is the previous one in the list
+                pipe.GapCenterY = RandomGapCenter(_pipes[(i + PipeCount - 1) % PipeCount].GapCenterY);
             }
         }
     }
 
-    private int RandomGapCenter()
+    // Each gap stays near the previous one, so the climb to it is always possible at this pipe spacing.
+    private int RandomGapCenter(int previousCenter)
     {
-        const int margin = 40;
-        return _random.Next(margin + PipeGapHeight / 2, GroundY - margin - PipeGapHeight / 2);
+        int lowest = PipeGapMargin + PipeGapHeight / 2;
+        int highest = GroundY - PipeGapMargin - PipeGapHeight / 2;
+        int min = Math.Max(lowest, previousCenter - MaxGapChange);
+        int max = Math.Min(highest, previousCenter + MaxGapChange);
+        return _random.Next(min, max + 1);
+    }
+
+    private void UpdateScore()
+    {
+        foreach (var pipe in _pipes)
+        {
+            if (!pipe.Scored && pipe.X + PipeWidth < CharacterX)
+            {
+                pipe.Scored = true;
+                Score++;
+            }
+        }
+    }
+
+    // ---------- Collision ----------
+
+    private bool CharacterHitSomething()
+    {
+        if (CharacterY + CharacterRadius >= GroundY)
+        {
+            CharacterY = GroundY - CharacterRadius;
+            return true;
+        }
+
+        foreach (var pipe in _pipes)
+        {
+            foreach (Rect part in PipeParts(pipe))
+            {
+                if (CircleTouchesRect(CharacterX, CharacterY, CharacterRadius, part))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    // the closest point of the rectangle to the circle's center decides whether they touch
+    private static bool CircleTouchesRect(double x, double y, double radius, Rect rect)
+    {
+        double dx = x - Math.Clamp(x, rect.Left, rect.Right);
+        double dy = y - Math.Clamp(y, rect.Top, rect.Bottom);
+        return dx * dx + dy * dy <= radius * radius;
     }
 
     // ---------- Render ----------
@@ -105,18 +236,41 @@ public sealed class GameScene : IDisposable
     /// Draws one game frame into a buffer this class reuses every call.
     /// The returned Mat is overwritten by the next render, so call Clone() to keep a copy.
     /// </summary>
-    public Mat Render()
+    public Mat Render(string? banner = null, string? status = null)
     {
         // the background never changes, so copy it instead of redrawing the gradient every frame
         _background.CopyTo(_canvas);
 
         foreach (var pipe in _pipes)
-            DrawPipe(_canvas, (int)pipe.X, pipe.GapCenterY, pipe.Colors);
+            DrawPipe(_canvas, pipe);
 
         // drawn after the pipes so they look planted in the ground
         DrawGround(_canvas, (int)_scrollOffset);
         DrawCharacter((int)CharacterY);
+
+        if (State != GameState.Ready)
+            DrawCenteredText(Score.ToString(), 60, 1.6, 3);
+        if (banner is not null)
+            DrawCenteredText(banner, GroundY / 2 - 50, 0.9, 2);
+        if (status is not null)
+            DrawText(status, new Point(12, Height - 14), 0.6, 1);
+
         return _canvas;
+    }
+
+    private void DrawCenteredText(string text, int baselineY, double scale, int thickness)
+    {
+        Size size = Cv2.GetTextSize(text, HersheyFonts.HersheySimplex, scale, thickness, out _);
+        DrawText(text, new Point((Width - size.Width) / 2, baselineY), scale, thickness);
+    }
+
+    // Dark copies shifted around the text keep it readable on any background. They use the same
+    // thickness because in OpenCV 5 thickness also changes letter widths, so a thicker copy wouldn't line up.
+    private void DrawText(string text, Point position, double scale, int thickness)
+    {
+        foreach (var (dx, dy) in new[] { (-2, 0), (2, 0), (0, -2), (0, 2) })
+            Cv2.PutText(_canvas, text, new Point(position.X + dx, position.Y + dy), HersheyFonts.HersheySimplex, scale, Outline, thickness, LineTypes.AntiAlias);
+        Cv2.PutText(_canvas, text, position, HersheyFonts.HersheySimplex, scale, Cloud, thickness, LineTypes.AntiAlias);
     }
 
     // ---------- Background ----------
@@ -171,16 +325,26 @@ public sealed class GameScene : IDisposable
 
     // ---------- Pipes ----------
 
-    private static void DrawPipe(Mat image, int x, int gapCenterY, PipeColors colors)
+    // the same rectangles are drawn and used for collision, so what you see is what you hit
+    private static Rect[] PipeParts(Pipe pipe)
     {
-        int gapTop = gapCenterY - PipeGapHeight / 2;
-        int gapBottom = gapCenterY + PipeGapHeight / 2;
+        int x = (int)pipe.X;
+        int gapTop = pipe.GapCenterY - PipeGapHeight / 2;
+        int gapBottom = pipe.GapCenterY + PipeGapHeight / 2;
 
-        DrawPipeBody(image, new Rect(x, 0, PipeWidth, gapTop), colors);
-        DrawPipeBody(image, new Rect(x - PipeCapOverhang, gapTop - PipeCapHeight, PipeWidth + PipeCapOverhang * 2, PipeCapHeight), colors);
+        return new[]
+        {
+            new Rect(x, 0, PipeWidth, gapTop),
+            new Rect(x - PipeCapOverhang, gapTop - PipeCapHeight, PipeWidth + PipeCapOverhang * 2, PipeCapHeight),
+            new Rect(x, gapBottom, PipeWidth, GroundY - gapBottom),
+            new Rect(x - PipeCapOverhang, gapBottom, PipeWidth + PipeCapOverhang * 2, PipeCapHeight),
+        };
+    }
 
-        DrawPipeBody(image, new Rect(x, gapBottom, PipeWidth, GroundY - gapBottom), colors);
-        DrawPipeBody(image, new Rect(x - PipeCapOverhang, gapBottom, PipeWidth + PipeCapOverhang * 2, PipeCapHeight), colors);
+    private static void DrawPipe(Mat image, Pipe pipe)
+    {
+        foreach (Rect part in PipeParts(pipe))
+            DrawPipeBody(image, part, pipe.Colors);
     }
 
     // a light strip and a dark strip make the flat rectangle look round

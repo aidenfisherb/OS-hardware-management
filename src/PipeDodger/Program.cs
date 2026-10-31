@@ -2,6 +2,7 @@
 using OpenCvSharp;
 using PipeDodger.Camera;
 using PipeDodger.Game;
+using PipeDodger.Input;
 
 namespace PipeDodger;
 
@@ -40,7 +41,7 @@ public static class Program
             //open webcam
             camera.Open();
             Console.WriteLine($"Camera {options.DeviceIndex} opened via {camera.BackendName} at {camera.Width}x{camera.Height}.");
-            Console.WriteLine("C = capture still | Q / Esc = quit");
+            Console.WriteLine("Blink or Space = flap | R = restart | P = pause | C = capture still | Q / Esc = quit");
 
             Cv2.NamedWindow(LiveWindow, WindowFlags.AutoSize);
             //hand the camera to the frame loop
@@ -73,7 +74,9 @@ public static class Program
         using var liveGray = new Mat();
         using var capturedGray = new Mat();
         using var scene = new GameScene();
+        using var blink = new BlinkDetector();
         var clock = Stopwatch.StartNew();
+        bool userPaused = false;
         Mat? captured = null;
 
         try
@@ -89,10 +92,22 @@ public static class Program
                     Cv2.ImShow(LiveWindow, frame);
                     Cv2.ImShow("Live Grayscale", liveGray);
 
-                    // real elapsed time keeps the scroll speed the same at any camera frame rate
-                    scene.Update(clock.Elapsed.TotalSeconds);
+                    // real elapsed time keeps the game speed the same at any camera frame rate
+                    double deltaSeconds = clock.Elapsed.TotalSeconds;
                     clock.Restart();
-                    Cv2.ImShow("Game", scene.Render());
+
+                    bool blinked = blink.ProcessFrame(liveGray, deltaSeconds);
+
+                    // losing the player mid-game pauses it instead of letting the bird fall
+                    bool faceLost = scene.State == GameState.Playing && !blink.HasFace;
+                    bool paused = userPaused || faceLost;
+
+                    if (blinked && !paused)
+                        scene.Flap();
+                    if (!paused)
+                        scene.Update(deltaSeconds);
+
+                    Cv2.ImShow("Game", scene.Render(BannerText(scene, userPaused, faceLost), StatusText(blink)));
 
                     if (captured is not null)
                     {
@@ -107,6 +122,21 @@ public static class Program
                         captured?.Dispose();
                         captured = frame.Clone();
                         Cv2.CvtColor(captured, capturedGray, ColorConversionCodes.BGR2GRAY);
+                    }
+                    else if (key == ' ')
+                    {
+                        // keyboard backup for testing, or if blink detection struggles in a room's lighting
+                        if (!paused)
+                            scene.Flap();
+                    }
+                    else if (key is 'r' or 'R')
+                    {
+                        scene.Restart();
+                        userPaused = false;
+                    }
+                    else if (key is 'p' or 'P')
+                    {
+                        userPaused = !userPaused;
                     }
                     else if (QuitRequested(key))
                     {
@@ -129,6 +159,22 @@ public static class Program
             captured?.Dispose();
         }
     }
+
+    private static string? BannerText(GameScene scene, bool userPaused, bool faceLost)
+    {
+        if (userPaused) return "Paused - press P";
+        if (faceLost) return "Face lost - look at the camera";
+        return scene.State switch
+        {
+            GameState.Ready => "Blink to start",
+            GameState.GameOver => "Game over - press R",
+            _ => null,
+        };
+    }
+
+    // shows what the detector sees, which makes lighting or glasses problems easy to spot
+    private static string StatusText(BlinkDetector blink) =>
+        blink.HasFace ? $"Face found | eyes open: {blink.EyesVisible}" : "No face found";
 
     private static bool QuitRequested(int key) =>
         key is 'q' or 'Q' or EscKey
