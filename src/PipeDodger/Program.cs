@@ -37,11 +37,13 @@ public static class Program
         try
         {
             using var camera = new CameraSource(options);
+            //open webcam
             camera.Open();
             Console.WriteLine($"Camera {options.DeviceIndex} opened via {camera.BackendName} at {camera.Width}x{camera.Height}.");
             Console.WriteLine("C = capture still | Q / Esc = quit");
 
             Cv2.NamedWindow(LiveWindow, WindowFlags.AutoSize);
+            //hand the camera to the frame loop
             RunLoop(camera, () => stopRequested);
 
             Console.WriteLine($"Stopped after {camera.FramesRead} frames. Camera released.");
@@ -76,11 +78,14 @@ public static class Program
 
         try
         {
+            // is Ctrl+C pressed?
             while (!stopRequested())
             {
+                //get the next frame
                 if (camera.TryReadFrame(out Mat frame))
                 {
                     Cv2.CvtColor(frame, liveGray, ColorConversionCodes.BGR2GRAY);
+                    //show it
                     Cv2.ImShow(LiveWindow, frame);
                     Cv2.ImShow("Live Grayscale", liveGray);
 
@@ -108,6 +113,7 @@ public static class Program
                         return;
                     }
                 }
+                //if there are 60 failures in a row, throw a exception
                 else if (camera.IsLost)
                 {
                     throw camera.LostException();

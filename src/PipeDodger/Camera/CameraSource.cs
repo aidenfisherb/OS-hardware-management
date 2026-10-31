@@ -17,6 +17,7 @@ public sealed class CameraSource : IDisposable
     private int _consecutiveFailures;
     private bool _disposed;
 
+    // constructor receives the cameraoptions object and stores it in _options
     public CameraSource(CameraOptions options) => _options = options;
 
     public string BackendName { get; private set; } = "";
@@ -57,6 +58,7 @@ public sealed class CameraSource : IDisposable
     public bool TryReadFrame(out Mat frame)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        //newest picture replaces old one
         frame = _frame;
 
         bool simulatedFailure = _options.SimulateReadFailureAfter > 0
