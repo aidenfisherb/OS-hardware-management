@@ -1,6 +1,6 @@
 # Face-Controlled Pipe Dodger
 
-A **C# application for COSC 335 Project 3: Device Management**. Face height directly controls a character dodging scrolling pipes. Keep one character, one pipe type, fixed speed, score, collision, and restart.
+A **C# application for COSC 335 Project 3: Device Management**. Blink to flap a bird through scrolling pipes, with Space as a backup. The game uses the downloaded Flappy Bird sprites at their native 288×512 portrait resolution; see [artwork attribution](src/PipeDodger/assets/flappy-bird/README.md).
 
 **Required camera features:** live video, a persistent captured still, grayscale on both, original/filtered comparisons, useful errors, and normal resource cleanup. Complete these before game polish.
 
@@ -39,7 +39,7 @@ Aiden configures runtime selection per target in the shared project; everyone us
 
 Bundle [haarcascade_frontalface_default.xml](https://github.com/opencv/opencv/blob/4.x/data/haarcascades/haarcascade_frontalface_default.xml) in `assets/`, copy it to build output, and retain its attribution.
 
-**Proposed controls:** head movement = steer; **C** = capture; **R** = start/restart; **P** = pause/resume; **Q/Esc** = exit. Original/filtered pairs stay visible side by side.
+**Current controls:** **Space** = start/flap; blink = flap; **C** = capture; **R** = reset to the start screen; **P** = pause/resume; **Q/Esc** = exit. Original/filtered pairs stay available in separate windows.
 
 ## Timeline, order, and blockers
 

@@ -58,9 +58,11 @@ An OpenCV window must have keyboard focus for keys to work. The game also pauses
 
 Five windows: **Live Original**, **Live Grayscale**, **Captured Original**, **Captured Grayscale** (captured pair appears after the first C), and **Game**. Details: [docs/ethan-image-views.md](docs/ethan-image-views.md).
 
+The game uses the original sprites on a 288×512 portrait canvas. Start/restart/pause instructions appear in its window title; face and eye status appear in the Live Original window title so they don't cover the artwork. Sprite source and license: [assets/flappy-bird/README.md](src/PipeDodger/assets/flappy-bird/README.md).
+
 ### Blink detection tips
 
-The bottom of the Game window shows what the detector sees. With your eyes open it should say `eyes open: 1` or `2`, and it should drop to `0` when you blink.
+The Live Original window title shows what the detector sees. With your eyes open it should say `eyes open: 1` or `2`, and it should drop to `0` when you blink.
 
 - Face the camera with light on your face, not behind you.
 - Blink firmly. A very fast blink can fall between camera frames.

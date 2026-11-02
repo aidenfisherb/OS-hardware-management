@@ -44,6 +44,7 @@ public static class Program
             Console.WriteLine("Space = start | Blink or Space = flap | R = restart | P = pause | C = capture still | Q / Esc = quit");
 
             Cv2.NamedWindow(LiveWindow, WindowFlags.AutoSize);
+            Cv2.NamedWindow("Game", WindowFlags.AutoSize);
             //hand the camera to the frame loop
             RunLoop(camera, () => stopRequested);
 
@@ -108,7 +109,9 @@ public static class Program
                     if (!paused)
                         scene.Update(deltaSeconds);
 
-                    Cv2.ImShow("Game", scene.Render(BannerText(scene, userPaused, faceLost), StatusText(blink)));
+                    Cv2.ImShow("Game", scene.Render());
+                    Cv2.SetWindowTitle("Game", BannerText(scene, userPaused, faceLost) ?? "Flappy Bird");
+                    Cv2.SetWindowTitle(LiveWindow, $"Live Original | {StatusText(blink)}");
 
                     if (captured is not null)
                     {
