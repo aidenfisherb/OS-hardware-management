@@ -47,8 +47,8 @@ The first run downloads packages from NuGet, so it needs internet access.
 
 | Key | Action |
 | --- | --- |
-| Space | Start the game; also flaps |
-| Blink | Flap (once the game has started) |
+| Space | Start the game (does nothing once the game is going) |
+| Blink | Flap |
 | R | Restart the game |
 | P | Pause / resume the game |
 | C | Capture a still (original + grayscale); stays frozen until the next C |
@@ -66,7 +66,7 @@ The Live Original window title shows what the detector sees. With your eyes open
 
 - Face the camera with light on your face, not behind you.
 - Blink firmly. A very fast blink can fall between camera frames.
-- If the bird flaps by itself, raise `ClosedFramesToBlink` in `Input/BlinkDetector.cs`. Space always works as a backup.
+- If the bird flaps by itself, raise `ClosedFramesToBlink` in `Input/BlinkDetector.cs`. If blinks get missed, lower it.
 
 Detector files in `assets/` come from [OpenCV](https://github.com/opencv/opencv/tree/4.x/data/haarcascades); their license text is kept at the top of each file.
 

@@ -215,12 +215,31 @@ public sealed class GameScene : IDisposable
 
         DrawCharacter();
         if (State == GameState.Ready)
+        {
             _message.Draw(_canvas, (Width - _message.Image.Width) / 2, 61);
+            DrawCenteredText("Press SPACE to start", 61 + _message.Image.Height + 30);
+        }
         else
             DrawScore();
         if (State == GameState.GameOver)
+        {
             _gameOver.Draw(_canvas, (Width - _gameOver.Image.Width) / 2, 170);
+            DrawCenteredText("Press R to restart", 170 + _gameOver.Image.Height + 30);
+        }
         return _canvas;
+    }
+
+    // The sprite set has no letters, so this uses OpenCV text. Dark copies shifted around it act as an
+    // outline; a thicker copy wouldn't line up, because in OpenCV 5 thickness also changes letter widths.
+    private void DrawCenteredText(string text, int baselineY)
+    {
+        const double scale = 0.6;
+        const int thickness = 2;
+        Size size = Cv2.GetTextSize(text, HersheyFonts.HersheySimplex, scale, thickness, out _);
+        int x = (Width - size.Width) / 2;
+        foreach (var (dx, dy) in new[] { (-2, 0), (2, 0), (0, -2), (0, 2) })
+            Cv2.PutText(_canvas, text, new Point(x + dx, baselineY + dy), HersheyFonts.HersheySimplex, scale, new Scalar(40, 40, 40), thickness, LineTypes.AntiAlias);
+        Cv2.PutText(_canvas, text, new Point(x, baselineY), HersheyFonts.HersheySimplex, scale, Scalar.White, thickness, LineTypes.AntiAlias);
     }
 
     private void DrawScore()
